@@ -1,0 +1,212 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/emericbard-web/devoir-2/blob/main/Modele_non_superviser_1_\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "jgfCQcLtAo_2"
+      },
+      "outputs": [],
+      "source": [
+        "# ici jai sélectionnee les colonnes numériques et on standardise les données pour le clustering.\n",
+        "num_df = df.select_dtypes(include=[np.number]).dropna()\n",
+        "\n",
+        "scaler = StandardScaler()\n",
+        "X_scaled = scaler.fit_transform(num_df)\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# On va apres  appliquer une PCA à 2 dimensions pour visualiser les clusters plus facilement.\n",
+        "pca = PCA(n_components=2)\n",
+        "X_pca = pca.fit_transform(X_scaled)\n",
+        "\n",
+        "pca_df = pd.DataFrame(data=X_pca, columns=['PC1', 'PC2'])\n"
+      ],
+      "metadata": {
+        "id": "36UYiDA0BXsN"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# ici jutilise la méthode du coude pour déterminer le nombre optimal de clusters pour K-Means.\n",
+        "inertia = []\n",
+        "K = range(2, 10)\n",
+        "\n",
+        "for k in K:\n",
+        "    km = KMeans(n_clusters=k, random_state=42)\n",
+        "    km.fit(X_scaled)\n",
+        "    inertia.append(km.inertia_)\n",
+        "\n",
+        "plt.plot(K, inertia, marker='o')\n",
+        "plt.xlabel(\"k\")\n",
+        "plt.ylabel(\"Inertia\")\n",
+        "plt.title(\"Méthode du coude - KMeans\")\n",
+        "plt.show()\n"
+      ],
+      "metadata": {
+        "id": "FSpUybvXBZys"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Jen entraîne K-Means avec k=3 (ou la valeur trouv avec la méthode du coude).\n",
+        "kmeans = KMeans(n_clusters=3, random_state=42)\n",
+        "clusters_km = kmeans.fit_predict(X_scaled)\n",
+        "\n",
+        "pca_df[\"cluster_kmeans\"] = clusters_km\n"
+      ],
+      "metadata": {
+        "id": "No7BluisBbyS"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# On calcule le score silhouette pour évaluer la qualité des clusters K-Means.\n",
+        "sil_km = silhouette_score(X_scaled, clusters_km)\n",
+        "sil_km\n"
+      ],
+      "metadata": {
+        "id": "ZPs2KliuBduH"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# On visualise les clusters K-Means dans l’espace PCA.\n",
+        "plt.figure(figsize=(8,6))\n",
+        "sns.scatterplot(\n",
+        "    x=\"PC1\", y=\"PC2\",\n",
+        "    hue=\"cluster_kmeans\",\n",
+        "    palette=\"Set1\",\n",
+        "    data=pca_df\n",
+        ")\n",
+        "plt.title(f\"Clustering K-Means (Silhouette = {sil_km:.3f})\")\n",
+        "plt.show()\n"
+      ],
+      "metadata": {
+        "id": "tTpycunXBf_e"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# On applique un clustering hiérarchique avec 3 clusters.\n",
+        "agg = AgglomerativeClustering(n_clusters=3)\n",
+        "clusters_agg = agg.fit_predict(X_scaled)\n",
+        "\n",
+        "pca_df[\"cluster_agg\"] = clusters_agg\n",
+        "\n",
+        "sil_agg = silhouette_score(X_scaled, clusters_agg)\n",
+        "sil_agg\n"
+      ],
+      "metadata": {
+        "id": "UthVhBzLBioq"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# On visualise le clustering hiérarchique dans l’espace PCA.\n",
+        "plt.figure(figsize=(8,6))\n",
+        "sns.scatterplot(\n",
+        "    x=\"PC1\", y=\"PC2\",\n",
+        "    hue=\"cluster_agg\",\n",
+        "    palette=\"Set2\",\n",
+        "    data=pca_df\n",
+        ")\n",
+        "plt.title(f\"Clustering Hiérarchique (Silhouette = {sil_agg:.3f})\")\n",
+        "plt.show()\n"
+      ],
+      "metadata": {
+        "id": "6b3NRoaZBmDV"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Ici on applique DBSCAN pour détecter les groupes et les points anormaux.\n",
+        "db = DBSCAN(eps=1.5, min_samples=10)\n",
+        "clusters_db = db.fit_predict(X_scaled)\n",
+        "\n",
+        "pca_df[\"cluster_dbscan\"] = clusters_db\n",
+        "\n",
+        "labels = clusters_db[clusters_db != -1]\n",
+        "\n",
+        "if len(set(labels)) > 1:\n",
+        "    sil_db = silhouette_score(X_scaled[clusters_db != -1], labels)\n",
+        "else:\n",
+        "    sil_db = \"Impossible à calculer\"\n",
+        "sil_db\n"
+      ],
+      "metadata": {
+        "id": "38FRzDXjBoNs"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# ici On visualise les clusters DBSCAN (le cluster -1 correspond aux points “anormaux”).\n",
+        "plt.figure(figsize=(8,6))\n",
+        "sns.scatterplot(\n",
+        "    x=\"PC1\", y=\"PC2\",\n",
+        "    hue=\"cluster_dbscan\",\n",
+        "    palette=\"tab10\",\n",
+        "    data=pca_df\n",
+        ")\n",
+        "plt.title(f\"DBSCAN (Silhouette = {sil_db})\")\n",
+        "plt.show()\n"
+      ],
+      "metadata": {
+        "id": "NuzG1tD0Br30"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
